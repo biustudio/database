@@ -11,13 +11,14 @@ declare(strict_types=1);
 
 namespace Spiral\Database\Schema;
 
+use DateTimeImmutable;
 use Spiral\Database\ColumnInterface;
 use Spiral\Database\Driver\DriverInterface;
-use Spiral\Database\Driver\QueryBindings;
 use Spiral\Database\Exception\DefaultValueException;
 use Spiral\Database\Exception\SchemaException;
 use Spiral\Database\Injection\Fragment;
 use Spiral\Database\Injection\FragmentInterface;
+use Spiral\Database\Query\QueryParameters;
 use Spiral\Database\Schema\Traits\ElementTrait;
 
 /**
@@ -266,7 +267,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
     /**
      * Shortcut for AbstractColumn->type() method.
      *
-     * @param string $type      Abstract type.
+     * @param string $type Abstract type.
      * @param array  $arguments Not used.
      * @return self
      */
@@ -311,11 +312,11 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
             $column['defaultValue'] = $this->getDefaultValue();
         }
 
-        if ($this->getAbstractType() == 'enum') {
+        if ($this->getAbstractType() === 'enum') {
             $column['enumValues'] = $this->enumValues;
         }
 
-        if ($this->getAbstractType() == 'decimal') {
+        if ($this->getAbstractType() === 'decimal') {
             $column['precision'] = $this->precision;
             $column['scale'] = $this->scale;
         }
@@ -328,7 +329,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
      */
     public function getSize(): int
     {
-        return $this->size;
+        return (int)$this->size;
     }
 
     /**
@@ -336,7 +337,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
      */
     public function getPrecision(): int
     {
-        return $this->precision;
+        return (int)$this->precision;
     }
 
     /**
@@ -344,7 +345,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
      */
     public function getScale(): int
     {
-        return $this->scale;
+        return (int)$this->scale;
     }
 
     /**
@@ -360,7 +361,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
      */
     public function hasDefaultValue(): bool
     {
-        return !is_null($this->defaultValue);
+        return $this->defaultValue !== null;
     }
 
     /**
@@ -389,7 +390,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
             case 'float':
                 return (float)$this->defaultValue;
             case 'bool':
-                if (is_string($this->defaultValue) && strtolower($this->defaultValue) == 'false') {
+                if (is_string($this->defaultValue) && strtolower($this->defaultValue) === 'false') {
                     return false;
                 }
 
@@ -434,7 +435,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
     {
         $schemaType = $this->getAbstractType();
         foreach ($this->phpMapping as $phpType => $candidates) {
-            if (in_array($schemaType, $candidates)) {
+            if (in_array($schemaType, $candidates, true)) {
                 return $phpType;
             }
         }
@@ -465,23 +466,23 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
         foreach ($this->reverseMapping as $type => $candidates) {
             foreach ($candidates as $candidate) {
                 if (is_string($candidate)) {
-                    if (strtolower($candidate) == strtolower($this->type)) {
+                    if (strtolower($candidate) === strtolower($this->type)) {
                         return $type;
                     }
 
                     continue;
                 }
 
-                if (strtolower($candidate['type']) != strtolower($this->type)) {
+                if (strtolower($candidate['type']) !== strtolower($this->type)) {
                     continue;
                 }
 
                 foreach ($candidate as $option => $required) {
-                    if ($option == 'type') {
+                    if ($option === 'type') {
                         continue;
                     }
 
-                    if ($this->{$option} != $required) {
+                    if ($this->{$option} !== $required) {
                         continue 2;
                     }
                 }
@@ -585,7 +586,10 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
     public function enum($values): AbstractColumn
     {
         $this->type('enum');
-        $this->enumValues = array_map('strval', is_array($values) ? $values : func_get_args());
+        $this->enumValues = array_map(
+            'strval',
+            is_array($values) ? $values : func_get_args()
+        );
 
         return $this;
     }
@@ -610,11 +614,15 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
         $this->type('string');
 
         if ($size > 255) {
-            throw new SchemaException("String size can't exceed 255 characters. Use text instead");
+            throw new SchemaException(
+                'String size can\'t exceed 255 characters. Use text instead'
+            );
         }
 
         if ($size < 0) {
-            throw new SchemaException('Invalid string length value');
+            throw new SchemaException(
+                'Invalid string length value'
+            );
         }
 
         $this->size = (int)$size;
@@ -652,7 +660,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
     {
         $statement = [$driver->identifier($this->name), $this->type];
 
-        if ($this->getAbstractType() == 'enum') {
+        if ($this->getAbstractType() === 'enum') {
             //Enum specific column options
             if (!empty($enumDefinition = $this->quoteEnum($driver))) {
                 $statement[] = $enumDefinition;
@@ -680,7 +688,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
     {
         $normalized = clone $initial;
 
-        // soft compare
+        // soft compare, todo: improve
         if ($this == $normalized) {
             return true;
         }
@@ -690,7 +698,7 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
 
         $difference = [];
         foreach ($columnVars as $name => $value) {
-            if (in_array($name, static::EXCLUDE_FROM_COMPARE)) {
+            if (in_array($name, static::EXCLUDE_FROM_COMPARE, true)) {
                 continue;
             }
 
@@ -698,12 +706,17 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
                 //Default values has to compared using type-casted value
                 if ($this->getDefaultValue() != $initial->getDefaultValue()) {
                     $difference[] = $name;
+                } elseif (
+                    $this->getDefaultValue() !== $initial->getDefaultValue()
+                    && (!is_object($this->getDefaultValue()) && !is_object($initial->getDefaultValue()))
+                ) {
+                    $difference[] = $name;
                 }
 
                 continue;
             }
 
-            if ($value != $dbColumnVars[$name]) {
+            if ($value !== $dbColumnVars[$name]) {
                 $difference[] = $name;
             }
         }
@@ -745,22 +758,26 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
         }
 
         if ($defaultValue instanceof FragmentInterface) {
-            return $defaultValue->compile(new QueryBindings(), $driver->getCompiler());
+            return $driver->getQueryCompiler()->compile(
+                new QueryParameters(),
+                '',
+                $defaultValue
+            );
         }
 
-        if ($this->getType() == 'bool') {
+        if ($this->getType() === 'bool') {
             return $defaultValue ? 'TRUE' : 'FALSE';
         }
 
-        if ($this->getType() == 'float') {
+        if ($this->getType() === 'float') {
             return sprintf('%F', $defaultValue);
         }
 
-        if ($this->getType() == 'int') {
-            return strval($defaultValue);
+        if ($this->getType() === 'int') {
+            return (string)$defaultValue;
         }
 
-        return strval($driver->quote($defaultValue));
+        return $driver->quote($defaultValue);
     }
 
     /**
@@ -784,10 +801,10 @@ abstract class AbstractColumn implements ColumnInterface, ElementInterface
         } else {
             if (is_numeric($value)) {
                 //Presumably timestamp
-                $datetime = new \DateTime('now', $this->timezone);
-                $datetime->setTimestamp($value);
+                $datetime = new DateTimeImmutable('now', $this->timezone);
+                $datetime = $datetime->setTimestamp($value);
             } else {
-                $datetime = new \DateTime($value, $this->timezone);
+                $datetime = new DateTimeImmutable($value, $this->timezone);
             }
         }
 

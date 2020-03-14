@@ -11,56 +11,67 @@ declare(strict_types=1);
 
 namespace Spiral\Database\Driver\Postgres\Query;
 
-use Spiral\Database\Driver\CompilerInterface;
-use Spiral\Database\Driver\Postgres\PostgresCompiler;
+use Spiral\Database\Driver\DriverInterface;
 use Spiral\Database\Driver\Postgres\PostgresDriver;
-use Spiral\Database\Driver\QueryBindings;
 use Spiral\Database\Exception\BuilderException;
 use Spiral\Database\Query\InsertQuery;
+use Spiral\Database\Query\QueryInterface;
+use Spiral\Database\Query\QueryParameters;
+use Throwable;
 
 /**
  * Postgres driver requires little bit different way to handle last insert id.
  */
 class PostgresInsertQuery extends InsertQuery
 {
-    public function compile(QueryBindings $bindings, CompilerInterface $compiler): string
+    /** @var PostgresDriver */
+    protected $driver;
+
+    /** @var string|null */
+    protected $returning;
+
+    /**
+     * @param DriverInterface $driver
+     * @param string|null     $prefix
+     * @return QueryInterface
+     */
+    public function withDriver(DriverInterface $driver, string $prefix = null): QueryInterface
     {
-        if (!$compiler instanceof PostgresCompiler) {
+        if (!$driver instanceof PostgresDriver) {
             throw new BuilderException(
-                'Postgres InsertQuery can be used only with Postgres driver and compiler'
+                'Postgres InsertQuery can be used only with Postgres driver'
             );
         }
 
-        /**
-         * @var PostgresDriver   $driver
-         * @var PostgresCompiler $compiler
-         */
-        return $compiler->compileInsert(
-            $bindings,
-            $this->table,
-            $this->columns,
-            $this->rowsets,
-            $this->getPrimaryKey($this->compiler->getPrefix(), $this->table)
-        );
+        return parent::withDriver($driver, $prefix);
     }
 
     /**
-     * {@inheritdoc}
+     * Set returning column. If not set, the driver will detect PK automatically.
+     *
+     * @param string $column
+     * @return $this
+     */
+    public function returning(string $column): self
+    {
+        $this->returning = $column;
+
+        return $this;
+    }
+
+    /**
+     * @return int|string|null
      */
     public function run()
     {
-        if ($this->compiler === null) {
-            throw new BuilderException('Unable to run query without assigned driver');
-        }
+        $params = new QueryParameters();
+        $queryString = $this->sqlStatement($params);
 
-        $bindings = new QueryBindings();
-        $queryString = $this->compile($bindings, $this->compiler);
-
-        $result = $this->driver->query($queryString, $bindings->getParameters());
+        $result = $this->driver->query($queryString, $params->getParameters());
 
         try {
-            if ($this->getPrimaryKey($this->compiler->getPrefix(), $this->table) !== null) {
-                return (int)$result->fetchColumn();
+            if ($this->getPrimaryKey() !== null) {
+                return $result->fetchColumn();
             }
 
             return null;
@@ -70,19 +81,32 @@ class PostgresInsertQuery extends InsertQuery
     }
 
     /**
-     * @param string $prefix
-     * @param string $table
-     *
-     * @return string|null
+     * @return array
      */
-    private function getPrimaryKey(string $prefix, string $table): ?string
+    public function getTokens(): array
     {
-        if (!$this->driver instanceof PostgresDriver) {
-            throw new BuilderException(
-                'Postgres InsertQuery can be used only with Postgres driver and compiler'
-            );
+        return [
+            'table'   => $this->table,
+            'return'  => $this->getPrimaryKey(),
+            'columns' => $this->columns,
+            'values'  => $this->values
+        ];
+    }
+
+    /**
+     * @return string
+     */
+    private function getPrimaryKey(): ?string
+    {
+        $primaryKey = $this->returning;
+        if ($primaryKey === null && $this->driver !== null && $this->table !== null) {
+            try {
+                $primaryKey = $this->driver->getPrimaryKey($this->prefix, $this->table);
+            } catch (Throwable $e) {
+                return null;
+            }
         }
 
-        return $this->driver->getPrimary($prefix, $table);
+        return $primaryKey;
     }
 }

@@ -1,21 +1,22 @@
 Spiral DBAL
 ========
 [![Latest Stable Version](https://poser.pugx.org/spiral/database/v/stable)](https://packagist.org/packages/spiral/database) 
-[![Build Status](https://travis-ci.org/spiral/database.svg?branch=master)](https://travis-ci.org/spiral/database)
+[![Build Status](https://github.com/spiral/database/workflows/build/badge.svg)](https://github.com/spiral/database/actions)
 [![Codecov](https://codecov.io/gh/spiral/database/branch/master/graph/badge.svg)](https://codecov.io/gh/spiral/database/)
 
 Secure, multiple SQL dialects (MySQL, PostgreSQL, SQLite, SQLServer), schema introspection, schema declaration, smart identifier wrappers, database partitions, query builders, nested queries.
 
-Documentation (v1.0.0 - outdated)
+Documentation
 --------
-* [Overview](https://github.com/spiral/docs/blob/master/database/overview.md)
-* [Databases and Drivers](https://github.com/spiral/docs/blob/master/database/databases.md)
-* [Query Builders](https://github.com/spiral/docs/blob/master/database/builders.md)
-* [Transactions](https://github.com/spiral/docs/blob/master/database/transactions.md)
-* [Schema Introspection](https://github.com/spiral/docs/blob/master/database/introspection.md)
-* [Schema Declaration](https://github.com/spiral/docs/blob/master/database/declaration.md)
-* [Migrations](https://github.com/spiral/docs/blob/master/database/migrations.md)
-* [Errata](https://github.com/spiral/docs/blob/master/database/errata.md)
+* [Installation and Configuration](https://spiral.dev/docs/database-configuration)
+* [Access Database](https://spiral.dev/docs/database-access)
+* [Database Isolation](https://spiral.dev/docs/database-isolation)
+* [Query Builders](https://spiral.dev/docs/database-query-builders)
+* [Transactions](https://spiral.dev/docs/database-transactions)
+* [Schema Introspection](https://spiral.dev/docs/database-introspection)
+* [Schema Declaration](https://spiral.dev/docs/database-declaration)
+* [Migrations](https://spiral.dev/docs/database-migrations)
+* [Errata](https://spiral.dev/docs/database-errata)
 
 Requirements
 --------

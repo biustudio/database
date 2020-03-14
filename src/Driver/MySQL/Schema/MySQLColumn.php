@@ -145,7 +145,7 @@ class MySQLColumn extends AbstractColumn
     {
         $defaultValue = $this->defaultValue;
 
-        if (in_array($this->type, $this->forbiddenDefaults)) {
+        if (in_array($this->type, $this->forbiddenDefaults, true)) {
             //Flushing default value for forbidden types
             $this->defaultValue = null;
         }
@@ -174,7 +174,7 @@ class MySQLColumn extends AbstractColumn
         $column = new self($table, $schema['Field'], $timezone);
 
         $column->type = $schema['Type'];
-        $column->nullable = strtolower($schema['Null']) == 'yes';
+        $column->nullable = strtolower($schema['Null']) === 'yes';
         $column->defaultValue = $schema['Default'];
         $column->autoIncrement = stripos($schema['Extra'], 'auto_increment') !== false;
 
@@ -191,6 +191,7 @@ class MySQLColumn extends AbstractColumn
 
         $column->type = $matches['type'];
 
+        $options = [];
         if (!empty($matches['options'])) {
             $options = explode(',', $matches['options']);
 
@@ -202,24 +203,43 @@ class MySQLColumn extends AbstractColumn
             }
         }
 
+        // since 8.0 database does not provide size for some of the columns
+        if ($column->size === 0) {
+            switch ($column->type) {
+                case 'int':
+                    $column->size = 11;
+                    break;
+                case 'bigint':
+                    $column->size = 20;
+                    break;
+                case 'tinyint':
+                    if ($column->size !== 1) {
+                        $column->size = 4;
+                    }
+            }
+        }
+
         //Fetching enum values
-        if ($column->getAbstractType() == 'enum' && !empty($options)) {
-            $column->enumValues = array_map(function ($value) {
-                return trim($value, $value[0]);
-            }, $options);
+        if ($options !== [] && $column->getAbstractType() === 'enum') {
+            $column->enumValues = array_map(
+                static function ($value) {
+                    return trim($value, $value[0]);
+                },
+                $options
+            );
 
             return $column;
         }
 
         //Default value conversions
-        if ($column->type == 'bit' && $column->hasDefaultValue()) {
+        if ($column->type === 'bit' && $column->hasDefaultValue()) {
             //Cutting b\ and '
             $column->defaultValue = new Fragment($column->defaultValue);
         }
 
         if (
-            $column->getAbstractType() == 'timestamp'
-            && $column->defaultValue == '0000-00-00 00:00:00'
+            $column->defaultValue === '0000-00-00 00:00:00'
+            && $column->getAbstractType() === 'timestamp'
         ) {
             //Normalizing default value for timestamps
             $column->defaultValue = 0;

@@ -66,7 +66,8 @@ class SQLServerTable extends AbstractTable
      */
     protected function fetchIndexes(): array
     {
-        $query = 'SELECT [indexes].[name] AS [indexName], [cl].[name] AS [columnName], '
+        $query = 'SELECT [indexes].[name] AS [indexName], '
+            . '[cl].[name] AS [columnName], [columns].[is_descending_key] AS [isDescendingKey], '
             . "[is_primary_key] AS [isPrimary], [is_unique] AS [isUnique]\n"
             . "FROM [sys].[indexes] AS [indexes]\n"
             . "INNER JOIN [sys].[index_columns] as [columns]\n"
@@ -115,7 +116,7 @@ class SQLServerTable extends AbstractTable
 
         $result = [];
         foreach ($fks as $schema) {
-            $result[] = SQlServerForeign::createInstance(
+            $result[] = SQlServerForeignKey::createInstance(
                 $this->getName(),
                 $this->getPrefix(),
                 $schema
@@ -170,6 +171,6 @@ class SQLServerTable extends AbstractTable
      */
     protected function createForeign(string $name): AbstractForeignKey
     {
-        return new SQlServerForeign($this->getName(), $this->getPrefix(), $name);
+        return new SQlServerForeignKey($this->getName(), $this->getPrefix(), $name);
     }
 }

@@ -11,14 +11,12 @@ declare(strict_types=1);
 
 namespace Spiral\Database\Tests;
 
-use Mockery as m;
 use PHPUnit\Framework\TestCase;
-use Spiral\Database\Driver\DriverInterface;
-use Spiral\Database\Driver\MySQL\MySQLCompiler;
-use Spiral\Database\Driver\QueryBindings;
-use Spiral\Database\Driver\Quoter;
+use Spiral\Database\Driver\SQLite\SQLiteCompiler;
+use Spiral\Database\Injection\Expression;
 use Spiral\Database\Injection\Fragment;
 use Spiral\Database\Injection\FragmentInterface;
+use Spiral\Database\Query\QueryParameters;
 
 class FragmentTest extends TestCase
 {
@@ -27,19 +25,62 @@ class FragmentTest extends TestCase
         $fragment = new Fragment('some sql');
         $this->assertInstanceOf(FragmentInterface::class, $fragment);
 
-        $this->assertSame('some sql', $fragment->compile(
-            new QueryBindings(),
-            new MySQLCompiler(
-                new Quoter(m::mock(DriverInterface::class), '')
-            )
-        ));
+        $q = new SQLiteCompiler();
+
+        $this->assertSame(
+            'some sql',
+            $q->compile(new QueryParameters(), '', $fragment)
+        );
     }
 
-    public function testSerialize(): void
+    public function testExpression(): void
     {
-        $fragment = new Fragment('some sql');
-        $fragment2 = Fragment::__set_state(['statement' => 'some sql']);
+        $fragment = new Expression('some sql');
+        $this->assertInstanceOf(FragmentInterface::class, $fragment);
 
-        $this->assertEquals($fragment2, $fragment);
+        $q = new SQLiteCompiler();
+
+        $this->assertSame(
+            '"some" "sql"',
+            $q->compile(new QueryParameters(), '', $fragment)
+        );
+    }
+
+    public function testExpressionWithParameters(): void
+    {
+        $fragment = new Expression('name = ?', 123);
+
+        $q = new SQLiteCompiler();
+
+        $this->assertSame(
+            '"name" = ?',
+            $q->compile($p = new QueryParameters(), '', $fragment)
+        );
+
+        $this->assertSame(123, $p->getParameters()[0]->getValue());
+    }
+
+    public function testSetState(): void
+    {
+        $expression = new Expression('some sql');
+
+        $exp = eval('return ' . var_export($expression, true) . ';');
+        $this->assertSame(
+            [
+                'expression' => 'some sql',
+                'parameters' => []
+            ],
+            $exp->getTokens()
+        );
+
+        $fragment = new Fragment('some sql');
+
+        $f = eval('return ' . var_export($fragment, true) . ';');
+        $this->assertSame(
+            [
+                'fragment' => 'some sql'
+            ],
+            $f->getTokens()
+        );
     }
 }

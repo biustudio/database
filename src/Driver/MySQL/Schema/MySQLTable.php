@@ -35,6 +35,13 @@ class MySQLTable extends AbstractTable
     private $engine = self::ENGINE_INNODB;
 
     /**
+     * MySQL version.
+     *
+     * @var string
+     */
+    private $version;
+
+    /**
      * Change table engine. Such operation will be applied only at moment of table creation.
      *
      * @param string $engine
@@ -42,7 +49,7 @@ class MySQLTable extends AbstractTable
      *
      * @throws SchemaException
      */
-    public function setEngine($engine)
+    public function setEngine($engine): MySQLTable
     {
         if ($this->exists()) {
             throw new SchemaException('Table engine can be set only at moment of creation');
@@ -56,7 +63,7 @@ class MySQLTable extends AbstractTable
     /**
      * @return string
      */
-    public function getEngine()
+    public function getEngine(): string
     {
         return $this->engine;
     }
@@ -71,9 +78,23 @@ class MySQLTable extends AbstractTable
         parent::initSchema($state);
 
         //Reading table schema
-        $this->engine = $this->driver->query('SHOW TABLE STATUS WHERE `Name` = ?', [
-            $state->getName()
-        ])->fetch()['Engine'];
+        $this->engine = $this->driver->query(
+            'SHOW TABLE STATUS WHERE `Name` = ?',
+            [
+                $state->getName()
+            ]
+        )->fetch()['Engine'];
+    }
+
+    protected function isIndexColumnSortingSupported(): bool
+    {
+        if (!$this->version) {
+            $this->version = $this->driver->query('SELECT VERSION() AS version')
+                ->fetch()['version'];
+        }
+
+        $isMariaDB = strpos($this->version, 'MariaDB') !== false;
+        return !$isMariaDB;
     }
 
     /**
@@ -105,7 +126,7 @@ class MySQLTable extends AbstractTable
         //Gluing all index definitions together
         $schemas = [];
         foreach ($this->driver->query($query) as $index) {
-            if ($index['Key_name'] == 'PRIMARY') {
+            if ($index['Key_name'] === 'PRIMARY') {
                 //Skipping PRIMARY index
                 continue;
             }
@@ -148,7 +169,7 @@ class MySQLTable extends AbstractTable
                 $schema['REFERENCED_COLUMN_NAME'][] = $column['REFERENCED_COLUMN_NAME'];
             }
 
-            $result[] = MySQLForeign::createInstance(
+            $result[] = MySQLForeignKey::createInstance(
                 $this->getName(),
                 $this->getPrefix(),
                 $schema
@@ -169,7 +190,7 @@ class MySQLTable extends AbstractTable
 
         $primaryKeys = [];
         foreach ($this->driver->query($query) as $index) {
-            if ($index['Key_name'] == 'PRIMARY') {
+            if ($index['Key_name'] === 'PRIMARY') {
                 $primaryKeys[] = $index['Column_name'];
             }
         }
@@ -198,6 +219,6 @@ class MySQLTable extends AbstractTable
      */
     protected function createForeign(string $name): AbstractForeignKey
     {
-        return new MySQLForeign($this->getName(), $this->getPrefix(), $name);
+        return new MySQLForeignKey($this->getName(), $this->getPrefix(), $name);
     }
 }

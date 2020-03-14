@@ -12,10 +12,9 @@ declare(strict_types=1);
 namespace Spiral\Database\Injection;
 
 use Spiral\Database\Driver\CompilerInterface;
-use Spiral\Database\Driver\QueryBindings;
 
 /**
- * SQLExpression provides ability to mock part of SQL code responsible for operations involving
+ * Expression provides ability to mock part of SQL code responsible for operations involving
  * table and column names. This class will quote and prefix every found table name and column while
  * query compilation.
  *
@@ -23,41 +22,67 @@ use Spiral\Database\Driver\QueryBindings;
  *
  * I potentially should have an interface for such class.
  */
-final class Expression implements FragmentInterface
+class Expression implements FragmentInterface
 {
     /** @var string */
-    private $expression = null;
+    private $expression;
+
+    /** @var ParameterInterface[] */
+    private $parameters = [];
 
     /**
      * @param string $statement
+     * @param mixed  ...$parameters
      */
-    public function __construct(string $statement)
+    public function __construct(string $statement, ...$parameters)
     {
         $this->expression = $statement;
+
+        foreach ($parameters as $parameter) {
+            if ($parameter instanceof ParameterInterface) {
+                $this->parameters[] = $parameter;
+            } else {
+                $this->parameters[] = new Parameter($parameter);
+            }
+        }
     }
 
     /**
-     * Unescaped expression.
-     *
      * @return string
      */
-    public function getExpression(): string
+    public function __toString(): string
     {
-        return $this->expression;
+        return 'exp:' . $this->expression;
     }
 
     /**
-     * {@inheritdoc}
+     * @param array $an_array
+     * @return Expression
      */
-    public function compile(
-        QueryBindings $bindings,
-        CompilerInterface $compiler
-    ): string {
-        if (empty($compiler)) {
-            //We might need to throw an exception here in some cases
-            return $this->expression;
-        }
+    public static function __set_state(array $an_array): Expression
+    {
+        return new self(
+            $an_array['expression'] ?? $an_array['statement'],
+            ...($an_array['parameters'] ?? [])
+        );
+    }
 
-        return $compiler->quote($bindings, $this->expression);
+    /**
+     * @return int
+     */
+    public function getType(): int
+    {
+        return CompilerInterface::EXPRESSION;
+    }
+
+    /**
+     * @return array
+     */
+    public function getTokens(): array
+    {
+        return [
+            'expression' => $this->expression,
+            'parameters' => $this->parameters
+        ];
     }
 }

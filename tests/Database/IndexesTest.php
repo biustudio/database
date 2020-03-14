@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Spiral\Database\Tests;
 
+use Spiral\Database\Database;
 use Spiral\Database\Driver\Handler;
 use Spiral\Database\Schema\AbstractColumn;
 use Spiral\Database\Schema\AbstractTable;
@@ -77,6 +78,21 @@ abstract class IndexesTest extends BaseTest
         $schema->integer('value');
         $schema->string('subset', 2);
         $schema->index(['value', 'subset']);
+
+        $schema->save(Handler::DO_ALL);
+
+        $this->assertSameAsInDB($schema);
+    }
+
+    public function testCreateOrderedIndex(): void
+    {
+        $schema = $this->schema('table');
+        $this->assertFalse($schema->exists());
+
+        $schema->primary('id');
+        $schema->integer('value');
+        $schema->string('subset', 2);
+        $schema->index(['subset', 'value DESC']);
 
         $schema->save(Handler::DO_ALL);
 
@@ -242,6 +258,21 @@ abstract class IndexesTest extends BaseTest
         $this->assertTrue($schema->exists());
 
         $schema->dropIndex(['email', 'status']);
+
+        $schema->save(Handler::DO_ALL);
+
+        $this->assertSameAsInDB($schema);
+    }
+
+    public function testDropOrderedIndex(): void
+    {
+        $schema = $this->sampleSchemaWithIndexes('table');
+
+        $schema->index(['id', 'balance DESC']);
+        $schema->save(Handler::DO_ALL);
+        $this->assertTrue($schema->exists());
+
+        $schema->dropIndex(['id', 'balance DESC']);
 
         $schema->save(Handler::DO_ALL);
 

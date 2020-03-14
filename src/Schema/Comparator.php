@@ -14,13 +14,13 @@ namespace Spiral\Database\Schema;
 /**
  * Compares two table states.
  */
-final class Comparator
+final class Comparator implements ComparatorInterface
 {
     /** @var State */
-    private $initial = null;
+    private $initial;
 
     /** @var State */
-    private $current = null;
+    private $current;
 
     /**
      * @param State $initial
@@ -57,7 +57,7 @@ final class Comparator
             count($this->alteredForeignKeys()),
         ];
 
-        return array_sum($difference) != 0;
+        return array_sum($difference) !== 0;
     }
 
     /**
@@ -65,7 +65,7 @@ final class Comparator
      */
     public function isRenamed(): bool
     {
-        return $this->current->getName() != $this->initial->getName();
+        return $this->current->getName() !== $this->initial->getName();
     }
 
     /**
@@ -73,7 +73,7 @@ final class Comparator
      */
     public function isPrimaryChanged(): bool
     {
-        return $this->current->getPrimaryKeys() != $this->initial->getPrimaryKeys();
+        return $this->current->getPrimaryKeys() !== $this->initial->getPrimaryKeys();
     }
 
     /**
@@ -141,7 +141,7 @@ final class Comparator
     {
         $difference = [];
         foreach ($this->current->getIndexes() as $name => $index) {
-            if (!$this->initial->hasIndex($index->getColumns())) {
+            if (!$this->initial->hasIndex($index->getColumnsWithSort())) {
                 $difference[] = $index;
             }
         }
@@ -156,7 +156,7 @@ final class Comparator
     {
         $difference = [];
         foreach ($this->initial->getIndexes() as $name => $index) {
-            if (!$this->current->hasIndex($index->getColumns())) {
+            if (!$this->current->hasIndex($index->getColumnsWithSort())) {
                 $difference[] = $index;
             }
         }
@@ -174,12 +174,12 @@ final class Comparator
         $difference = [];
 
         foreach ($this->current->getIndexes() as $name => $index) {
-            if (!$this->initial->hasIndex($index->getColumns())) {
+            if (!$this->initial->hasIndex($index->getColumnsWithSort())) {
                 //Added into schema
                 continue;
             }
 
-            $initial = $this->initial->findIndex($index->getColumns());
+            $initial = $this->initial->findIndex($index->getColumnsWithSort());
             if (!$index->compare($initial)) {
                 $difference[] = [$index, $initial];
             }

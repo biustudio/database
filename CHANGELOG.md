@@ -1,6 +1,77 @@
 CHANGELOG for 0.9.0 RC
 ======================
 
+v2.7.11 (12.03.2020)
+-----
+- Add PostgreSQL `timestamptz` mapping for `timestamp with time zone` by @rauanmayemir
+
+v2.7.10 (18.02.2020)
+-----
+- catch postgres EOF exceptions on amazon as connection exception
+
+v2.7.9 (18.02.2020)
+-----
+- added the ability to pass parameters into Expression in operators and values
+
+v2.7.8 (18.02.2020)
+-----
+- added the ability to pass parameters into Expression
+
+v2.7.7 (11.02.2020)
+-----
+- minor refactor in PostgresInsertQuery
+
+v2.7.6 (07.02.2020)
+-----
+- added the support to force the returning key in Postgres insert queries
+
+v2.7.5 (03.02.2020)
+-----
+- [bugfix] fixed invalid index introspection on legacy SQLite drivers
+
+v2.7.4 (30.01.2020)
+-----
+- [bugfix] fixed `syncTable` behavious for SQLite tables with sorted indexes @rauanmayemir
+
+v2.7.3 (29.01.2020)
+-----
+- added the ability to specify index direction by @rauanmayemir
+
+v2.7.2 (18.01.2020)
+-----
+- [bugfix] invalid size detection for int, bigint, tinyint columns under latest MySQL 8.0+
+
+2.7.1 (14.01.2020)
+-----
+- added AbstractColumn::getSize() typecasting
+- added the ability to serialize and de-serialize fragments and expressions
+
+2.7.0 (13.01.2020)
+-----
+- added sql compiler caching, up to 5x times faster query generation
+- added prepared statement caching
+- refactor of SchemaHandler
+- refactor of Query builders
+- added ComparatorInterface
+- deprecated MySQL 5.5 support
+
+2.6.10 (26.12.2019)
+-----
+- [bugfix] invalid change detection for nullable and zeroed default values
+- do not allow default values for text and blob columns of MySQL
+
+2.6.9 (26.12.2019)
+-----
+- added support for Postgres 12 updated constrain schemas
+
+2.6.8 (24.12.2019)
+-----
+- [bufgix] proper abstract type detection for primary UUID columns for SQLite driver 
+
+2.6.7 (23.12.2019)
+-----
+- [bufgix] proper exception type for syntax errors in MariaDB (previously was ConnectionException) 
+
 2.6.6 (11.12.2019)
 -----
 - allow drivers to handle low level error exceptions 
